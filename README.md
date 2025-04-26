@@ -12,14 +12,14 @@ Dimas Andhika Diputra | 5027231074
 
 ## Prerequisites
 
-> Make sure to have UV and Streamlit installed globally pada mesin anda.
-> Pastikan untuk menginstal UV dan Streamlit secara global pada mesin anda.
+* Make sure to have UV and Streamlit installed globally pada mesin anda.
+* Pastikan untuk menginstal UV dan Streamlit secara global pada mesin anda.
 
 ```bash
 uv sync
 ```
 
-**Usage/Pemakaian**:
+**Usage / Pemakaian**:
 
 ```bash
 streamlit run app.py

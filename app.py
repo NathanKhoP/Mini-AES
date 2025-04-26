@@ -1,5 +1,7 @@
 import streamlit as st
 import mini_aes
+import os
+from datetime import datetime
 
 # Set page config and title
 st.set_page_config(page_title="Mini-AES Encryption/Decryption", layout="wide")
@@ -93,6 +95,8 @@ if st.button("Apply Selected Test Case"):
             st.session_state.iv_text = selected_case['iv']
         st.rerun()
 
+st.markdown("---")
+
 # Process button
 if st.button("Process"):
     error = None
@@ -135,18 +139,111 @@ if st.button("Process"):
                 with st.expander("Show detailed process log"):
                     for line in log:
                         st.text(line)
-                        
+                
+                # Store result and log in session state for export
+                st.session_state.last_result = result
+                st.session_state.last_log = log
+                st.session_state.last_operation = {
+                    'mode': mode,
+                    'cipher_mode': cipher_mode,
+                    'input_text': input_text,
+                    'key': key_text,
+                    'iv': iv_text if cipher_mode == "CBC" else None
+                }
+
         except ValueError:
             error = "Input values must contain valid hexadecimal characters (0-9, A-F)."
             st.error(error)
         except Exception as e:
-            error = f"An unexpected error occurred: {e}"
+            error = f"An unexpected error occurred: {str(e)}"
             st.error(error)
     
     if error:
         st.error(error)
 
-# Add some helpful information at the bottom
+# Import/Export
+st.markdown("---")
+st.subheader("Import/Export Operations")
+
+imp_exp_tabs = st.tabs(["Export", "Import"])
+
+with imp_exp_tabs[0]:  # Export tab
+    st.write("Export operation to CSV")
+    custom_filename = st.text_input("Custom filename (optional)", 
+                                  placeholder="Leave empty for auto-generated name")
+    
+    if st.button("Export to CSV"):
+        if 'last_result' not in st.session_state:
+            st.warning("Please perform an operation first before exporting.")
+        else:
+            try:
+                filename = custom_filename if custom_filename else None
+                export_path = mini_aes.export_to_csv(
+                    mode=st.session_state.last_operation['mode'],
+                    cipher_mode=st.session_state.last_operation['cipher_mode'],
+                    input_text=st.session_state.last_operation['input_text'],
+                    key=st.session_state.last_operation['key'],
+                    iv=st.session_state.last_operation['iv'],
+                    output=st.session_state.last_result,
+                    log=st.session_state.last_log,
+                    filename=filename
+                )
+                st.success(f"Operation details exported to: {export_path}")
+                
+                # Provide download button for the exported file
+                with open(export_path, 'rb') as f:
+                    st.download_button(
+                        label="Download CSV",
+                        data=f,
+                        file_name=os.path.basename(export_path),
+                        mime="text/csv"
+                    )
+            except Exception as e:
+                st.error(f"Could not export to CSV: {str(e)}")
+
+with imp_exp_tabs[1]:  # Import tab
+    st.write("Import operation from CSV")
+    uploaded_file = st.file_uploader("Choose a CSV file", type=['csv'])
+    if uploaded_file is not None:
+        try:
+            # Save the uploaded file temporarily
+            temp_path = os.path.join('logs', uploaded_file.name)
+            os.makedirs('logs', exist_ok=True)
+            
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getvalue())
+            
+            # Import the operation details
+            operation = mini_aes.import_from_csv(temp_path)
+            if isinstance(operation, tuple):  # Error occurred
+                st.error(f"Error importing file: {operation[1]}")
+            else:
+                # Display imported details
+                st.success("Successfully imported operation details!")
+                with st.expander("View imported details"):
+                    for key, value in operation.items():
+                        if key != 'Process Log':
+                            st.write(f"{key}: {value}")
+                        else:
+                            st.write("Process Log:")
+                            for line in value:
+                                st.text(line)
+                
+                # Add button to apply imported values
+                if st.button("Apply imported values"):
+                    st.session_state.input_text = operation['Input Text']
+                    st.session_state.key_text = operation['Key']
+                    if 'IV' in operation:
+                        st.session_state.iv_text = operation['IV']
+                    st.rerun()
+            
+            # Clean up temp file
+            os.remove(temp_path)
+            
+        except Exception as e:
+            st.error(f"Error processing file: {str(e)}")
+
+# Help section at the bottom
 st.markdown("---")
 st.markdown("""
 ### How to Use
@@ -158,7 +255,10 @@ st.markdown("""
    - For decryption, the IV should be the first 4 characters of the ciphertext
 5. Select operation mode (encrypt/decrypt)
 6. Click "Process" to see the result
-7. Alternatively, select a test case and click "Apply Selected Test Case" to auto-fill the inputs
+7. After processing, you can:
+   - Export the operation details to a CSV file
+   - Import a previously exported operation
+8. Alternatively, select a test case and click "Apply Selected Test Case" to auto-fill the inputs
 
 ### Notes for CBC Mode
 - When encrypting, if no IV is provided, a random one will be generated

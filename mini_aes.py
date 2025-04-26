@@ -1,4 +1,7 @@
 import random
+import csv
+from datetime import datetime
+import os
 
 # S-Box (Substitution Box) 4-bit
 S_BOX = {
@@ -477,6 +480,78 @@ def decrypt_cbc(ciphertext_hex, key_hex):
     final_plaintext = "".join(plaintext_blocks)
     log.append(f"\nFinal plaintext: {final_plaintext}")
     return final_plaintext, None, log
+
+def export_to_csv(mode, cipher_mode, input_text, key, iv, output, log, filename=None):
+    """
+    Export encryption/decryption operation details to a CSV file.
+    Args:
+        mode (str): 'Encrypt' or 'Decrypt'
+        cipher_mode (str): 'ECB' or 'CBC'
+        input_text (str): Input text (plaintext or ciphertext)
+        key (str): Encryption/decryption key
+        iv (str): Initialization vector (for CBC mode)
+        output (str): Output text (ciphertext or plaintext)
+        log (list): Process log
+        filename (str, optional): Custom filename. If None, generates timestamp-based name
+    """
+    if not filename:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"mini_aes_{mode.lower()}_{cipher_mode.lower()}_{timestamp}.csv"
+    
+    # Create 'logs' directory if it doesn't exist
+    os.makedirs('logs', exist_ok=True)
+    filepath = os.path.join('logs', filename)
+    
+    with open(filepath, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        # Write operation details
+        writer.writerow(['Operation Type', mode])
+        writer.writerow(['Cipher Mode', cipher_mode])
+        writer.writerow(['Input Text', input_text])
+        writer.writerow(['Key', key])
+        if iv:
+            writer.writerow(['IV', iv])
+        writer.writerow(['Output', output])
+        writer.writerow([])  # Empty row as separator
+        writer.writerow(['Process Log'])
+        for line in log:
+            writer.writerow([line])
+    
+    return filepath
+
+def import_from_csv(filepath):
+    """
+    Import encryption/decryption operation details from a CSV file.
+    Returns:
+        dict: Dictionary containing operation details and log
+    """
+    try:
+        with open(filepath, 'r', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            
+            # Read operation details
+            operation = {}
+            log_started = False
+            log_lines = []
+            
+            for row in reader:
+                if not row:  # Skip empty rows
+                    continue
+                
+                if row[0] == 'Process Log':
+                    log_started = True
+                    continue
+                
+                if log_started:
+                    log_lines.append(row[0])
+                else:
+                    operation[row[0]] = row[1]
+            
+            operation['Process Log'] = log_lines
+            return operation
+            
+    except Exception as e:
+        return None, f"Error reading CSV file: {str(e)}"
 
 # Update test cases
 if __name__ == "__main__":

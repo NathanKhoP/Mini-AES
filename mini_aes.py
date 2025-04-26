@@ -1,4 +1,4 @@
-# mini_aes.py
+import random
 
 # S-Box (Substitution Box) 4-bit
 S_BOX = {
@@ -198,175 +198,287 @@ def key_expansion(key_nibbles):
     return round_keys, log
 
 def encrypt(plaintext_hex, key_hex):
+    """
+    Encrypt using ECB mode.
+    plaintext_hex must be a multiple of 4 hex characters (16-bit blocks)
+    """
     log = []
-    try:
-        plain_nibbles = hex_to_nibbles(plaintext_hex)
-        key_nibbles = hex_to_nibbles(key_hex)
-    except ValueError as e:
-        return None, str(e), [f"Error: {e}"]
-
-    # Key Expansion
-    try:
-        round_keys, key_expansion_log = key_expansion(key_nibbles)
-        log.extend(key_expansion_log)
-    except ValueError as e:
-        return None, str(e), [f"Key Expansion Error: {e}"]
-
-    log.append("\n--- Encryption Process ---")
-    log.append(f"Plaintext (Hex): {plaintext_hex}")
-    state_matrix = nibbles_to_matrix(plain_nibbles)
-    log.append(f"Initial State (Matrix):\n{state_matrix[0]}\n{state_matrix[1]} -> Hex: {matrix_to_hex(state_matrix)}")
-    log.append("-" * 20)
-
-    # Initial ARK with RK0
-    log.append(f"Round 0: Pre-round Transformation")
-    rk0 = round_keys[0]
-    log.append(f"  Round Key RK0: {matrix_to_hex(rk0)}")
-    state_matrix = add_round_key(state_matrix, rk0)
-    log.append(f"  Result after AddRoundKey(RK0): {matrix_to_hex(state_matrix)}")
-
-    # Rounds 1 to NUM_ROUNDS - 1 (Round 1 and 2)
-    for r in range(1, NUM_ROUNDS):
-        log.append(f"\n--- Round {r} ---")
-        round_start_state_hex = matrix_to_hex(state_matrix)
-
-        # SB
-        log.append(f"  Input to SubNibbles: {round_start_state_hex}")
-        state_matrix = sub_nibbles(state_matrix, S_BOX)
-        log.append(f"  Output of SubNibbles: {matrix_to_hex(state_matrix)}")
-
-        # SR
-        log.append(f"  Input to ShiftRows: {matrix_to_hex(state_matrix)}")
-        state_matrix = shift_rows(state_matrix)
-        log.append(f"  Output of ShiftRows: {matrix_to_hex(state_matrix)}")
-
-        # MC
-        log.append(f"  Input to MixColumns: {matrix_to_hex(state_matrix)}")
-        state_matrix = mix_columns(state_matrix, MIX_COL_MATRIX)
-        log.append(f"  Output of MixColumns: {matrix_to_hex(state_matrix)}")
-
-        # ARK
-        log.append(f"  Input to AddRoundKey: {matrix_to_hex(state_matrix)}")
-        current_round_key = round_keys[r]
-        log.append(f"  Round Key RK{r}: {matrix_to_hex(current_round_key)}")
-        state_matrix = add_round_key(state_matrix, current_round_key)
-        log.append(f"  Output of AddRoundKey(RK{r}) (End of Round {r}): {matrix_to_hex(state_matrix)}")
-
-    # Final Round (Round 3) - No MC
-    log.append(f"\n--- Round {NUM_ROUNDS} (Final) ---")
-    final_round_start_state_hex = matrix_to_hex(state_matrix)
-
-    # SB
-    log.append(f"  Input to SubNibbles: {final_round_start_state_hex}")
-    state_matrix = sub_nibbles(state_matrix, S_BOX)
-    log.append(f"  Output of SubNibbles: {matrix_to_hex(state_matrix)}")
-
-    # SR
-    log.append(f"  Input to ShiftRows: {matrix_to_hex(state_matrix)}")
-    state_matrix = shift_rows(state_matrix)
-    log.append(f"  Output of ShiftRows: {matrix_to_hex(state_matrix)}")
-
-    # ARK with RK3
-    log.append(f"  Input to AddRoundKey: {matrix_to_hex(state_matrix)}")
-    final_round_key = round_keys[NUM_ROUNDS]
-    log.append(f"  Round Key RK{NUM_ROUNDS}: {matrix_to_hex(final_round_key)}")
-    state_matrix = add_round_key(state_matrix, final_round_key)
-    log.append(f"  Output of AddRoundKey(RK{NUM_ROUNDS}) (Final State): {matrix_to_hex(state_matrix)}")
-
-    ciphertext_hex = matrix_to_hex(state_matrix)
-    log.append("-" * 20)
-    log.append(f"Final Ciphertext (Hex): {ciphertext_hex}")
-    log.append("--- End Encryption ---")
-
-    return ciphertext_hex, None, log
+    log.append("--- ECB Mode Encryption ---")
+    
+    # Validate input length
+    if len(plaintext_hex) % 4 != 0:
+        return None, "Plaintext length must be a multiple of 4 hex characters (16-bit blocks)", log
+    
+    blocks = [plaintext_hex[i:i+4] for i in range(0, len(plaintext_hex), 4)]
+    log.append(f"Split into {len(blocks)} blocks: {blocks}")
+    
+    ciphertext_blocks = []
+    
+    for i, block in enumerate(blocks):
+        log.append(f"\nProcessing Block {i+1}")
+        log.append(f"Current Block: {block}")
+        
+        try:
+            # Convert inputs to nibble lists
+            plain_nibbles = hex_to_nibbles(block)
+            key_nibbles = hex_to_nibbles(key_hex)
+            
+            # Convert nibble lists to state matrix and key matrix
+            state_matrix = nibbles_to_matrix(plain_nibbles)
+            key_matrix = nibbles_to_matrix(key_nibbles)
+            
+            log.append(f"Initial State Matrix:\n{state_matrix[0]}\n{state_matrix[1]}")
+            log.append(f"Key Matrix:\n{key_matrix[0]}\n{key_matrix[1]}")
+            
+            # Key Expansion
+            round_keys, key_expansion_log = key_expansion(key_nibbles)
+            log.extend("  " + line for line in key_expansion_log)
+            
+            # Initial AddRoundKey
+            log.append("\nRound 0: Initial AddRoundKey")
+            rk0 = round_keys[0]
+            state_matrix = add_round_key(state_matrix, rk0)
+            log.append(f"After AddRoundKey: {matrix_to_hex(state_matrix)}")
+            
+            # Main Rounds (1 to NUM_ROUNDS-1)
+            for r in range(1, NUM_ROUNDS):
+                log.append(f"\nRound {r}:")
+                
+                # SubNibbles
+                state_matrix = sub_nibbles(state_matrix, S_BOX)
+                log.append(f"After SubNibbles: {matrix_to_hex(state_matrix)}")
+                
+                # ShiftRows
+                state_matrix = shift_rows(state_matrix)
+                log.append(f"After ShiftRows: {matrix_to_hex(state_matrix)}")
+                
+                # MixColumns
+                state_matrix = mix_columns(state_matrix, MIX_COL_MATRIX)
+                log.append(f"After MixColumns: {matrix_to_hex(state_matrix)}")
+                
+                # AddRoundKey
+                state_matrix = add_round_key(state_matrix, round_keys[r])
+                log.append(f"After AddRoundKey: {matrix_to_hex(state_matrix)}")
+            
+            # Final Round (no MixColumns)
+            log.append(f"\nRound {NUM_ROUNDS} (Final):")
+            
+            # SubNibbles
+            state_matrix = sub_nibbles(state_matrix, S_BOX)
+            log.append(f"After SubNibbles: {matrix_to_hex(state_matrix)}")
+            
+            # ShiftRows
+            state_matrix = shift_rows(state_matrix)
+            log.append(f"After ShiftRows: {matrix_to_hex(state_matrix)}")
+            
+            # AddRoundKey
+            state_matrix = add_round_key(state_matrix, round_keys[NUM_ROUNDS])
+            log.append(f"After final AddRoundKey: {matrix_to_hex(state_matrix)}")
+            
+            cipher_block = matrix_to_hex(state_matrix)
+            ciphertext_blocks.append(cipher_block)
+            log.append(f"Block {i+1} Result: {cipher_block}")
+            
+        except ValueError as e:
+            return None, str(e), log
+        except Exception as e:
+            return None, f"Unexpected error in block {i+1}: {str(e)}", log
+    
+    final_ciphertext = "".join(ciphertext_blocks)
+    log.append(f"\nFinal ciphertext (all blocks): {final_ciphertext}")
+    return final_ciphertext, None, log
 
 def decrypt(ciphertext_hex, key_hex):
+    """
+    Decrypt using ECB mode.
+    ciphertext_hex must be a multiple of 4 hex characters (16-bit blocks)
+    """
     log = []
-    try:
-        cipher_nibbles = hex_to_nibbles(ciphertext_hex)
-        key_nibbles = hex_to_nibbles(key_hex)
-    except ValueError as e:
-        return None, str(e), [f"Error: {e}"]
+    log.append("--- ECB Mode Decryption ---")
+    
+    # Validate input length
+    if len(ciphertext_hex) % 4 != 0:
+        return None, "Ciphertext length must be a multiple of 4 hex characters (16-bit blocks)", log
+    
+    blocks = [ciphertext_hex[i:i+4] for i in range(0, len(ciphertext_hex), 4)]
+    log.append(f"Split into {len(blocks)} blocks: {blocks}")
+    
+    plaintext_blocks = []
+    
+    for i, block in enumerate(blocks):
+        log.append(f"\nProcessing Block {i+1}")
+        log.append(f"Current Block: {block}")
+        
+        try:
+            # Convert inputs to nibble lists
+            cipher_nibbles = hex_to_nibbles(block)
+            key_nibbles = hex_to_nibbles(key_hex)
+            
+            # Convert nibble lists to state matrix and key matrix
+            state_matrix = nibbles_to_matrix(cipher_nibbles)
+            key_matrix = nibbles_to_matrix(key_nibbles)
+            
+            log.append(f"Initial State Matrix:\n{state_matrix[0]}\n{state_matrix[1]}")
+            log.append(f"Key Matrix:\n{key_matrix[0]}\n{key_matrix[1]}")
+            
+            # Key Expansion
+            round_keys, key_expansion_log = key_expansion(key_nibbles)
+            log.extend("  " + line for line in key_expansion_log)
+            
+            # Initial AddRoundKey with last round key
+            log.append(f"\nRound 0: Initial AddRoundKey with RK{NUM_ROUNDS}")
+            state_matrix = add_round_key(state_matrix, round_keys[NUM_ROUNDS])
+            log.append(f"After AddRoundKey: {matrix_to_hex(state_matrix)}")
+            
+            # First Round - Special Case (no MixColumns)
+            log.append("\nRound 1:")
+            
+            # Inverse ShiftRows
+            state_matrix = shift_rows(state_matrix)  # ShiftRows is its own inverse
+            log.append(f"After InvShiftRows: {matrix_to_hex(state_matrix)}")
+            
+            # Inverse SubNibbles
+            state_matrix = sub_nibbles(state_matrix, INV_S_BOX)
+            log.append(f"After InvSubNibbles: {matrix_to_hex(state_matrix)}")
+            
+            # AddRoundKey with second-to-last round key
+            state_matrix = add_round_key(state_matrix, round_keys[NUM_ROUNDS-1])
+            log.append(f"After AddRoundKey: {matrix_to_hex(state_matrix)}")
+            
+            # Main Rounds (NUM_ROUNDS-2 down to 0)
+            for r in range(NUM_ROUNDS-2, -1, -1):
+                log.append(f"\nRound {NUM_ROUNDS-r}:")
+                
+                # Inverse MixColumns
+                state_matrix = mix_columns(state_matrix, INV_MIX_COL_MATRIX)
+                log.append(f"After InvMixColumns: {matrix_to_hex(state_matrix)}")
+                
+                # Inverse ShiftRows
+                state_matrix = shift_rows(state_matrix)
+                log.append(f"After InvShiftRows: {matrix_to_hex(state_matrix)}")
+                
+                # Inverse SubNibbles
+                state_matrix = sub_nibbles(state_matrix, INV_S_BOX)
+                log.append(f"After InvSubNibbles: {matrix_to_hex(state_matrix)}")
+                
+                # AddRoundKey
+                state_matrix = add_round_key(state_matrix, round_keys[r])
+                log.append(f"After AddRoundKey: {matrix_to_hex(state_matrix)}")
+            
+            plain_block = matrix_to_hex(state_matrix)
+            plaintext_blocks.append(plain_block)
+            log.append(f"Block {i+1} Result: {plain_block}")
+            
+        except ValueError as e:
+            return None, str(e), log
+        except Exception as e:
+            return None, f"Unexpected error in block {i+1}: {str(e)}", log
+    
+    final_plaintext = "".join(plaintext_blocks)
+    log.append(f"\nFinal plaintext (all blocks): {final_plaintext}")
+    return final_plaintext, None, log
 
-    # Key Expansion
-    try:
-        round_keys, _ = key_expansion(key_nibbles)
-        # Optional: log.extend(key_expansion_log)
-        log.append("--- Key Expansion Ran (details omitted in decryption log, see encryption) ---")
-        log.append(f"Round Keys (Hex): {[matrix_to_hex(rk) for rk in round_keys]}") # Tampilkan keys yg digunakan
-    except ValueError as e:
-        return None, str(e), [f"Key Expansion Error: {e}"]
+def generate_iv():
+    """Generate a random 16-bit (4 hex characters) initialization vector."""
+    return "{:04X}".format(random.randint(0, 0xFFFF))
 
-    log.append("\n--- Decryption Process ---")
-    log.append(f"Ciphertext (Hex): {ciphertext_hex}")
-    state_matrix = nibbles_to_matrix(cipher_nibbles)
-    log.append(f"Initial State (Ciphertext Matrix):\n{state_matrix[0]}\n{state_matrix[1]} -> Hex: {matrix_to_hex(state_matrix)}")
-    log.append("-" * 20)
+def encrypt_cbc(plaintext_hex, key_hex, iv_hex=None):
+    """
+    Encrypt using CBC mode.
+    plaintext_hex must be a multiple of 4 hex characters (16-bit blocks)
+    """
+    if not iv_hex:
+        iv_hex = generate_iv()
+    
+    log = []
+    log.append("--- CBC Mode Encryption ---")
+    log.append(f"IV: {iv_hex}")
+    
+    # Validate input length
+    if len(plaintext_hex) % 4 != 0:
+        return None, "Plaintext length must be a multiple of 4 hex characters (16-bit blocks)", log
+    
+    blocks = [plaintext_hex[i:i+4] for i in range(0, len(plaintext_hex), 4)]
+    log.append(f"Split into {len(blocks)} blocks: {blocks}")
+    
+    previous_block = iv_hex
+    ciphertext_blocks = []
+    
+    for i, block in enumerate(blocks):
+        log.append(f"\nProcessing Block {i+1}")
+        log.append(f"Current Block: {block}")
+        log.append(f"Previous Block (IV for first block): {previous_block}")
+        
+        # XOR with previous ciphertext (or IV for first block)
+        xored_block = "{:04X}".format(int(block, 16) ^ int(previous_block, 16))
+        log.append(f"After XOR with previous block: {xored_block}")
+        
+        # Encrypt the XORed block
+        cipher_block, err, block_log = encrypt(xored_block, key_hex)
+        if err:
+            return None, f"Error in block {i+1}: {err}", log
+            
+        log.append("Block encryption log:")
+        log.extend("  " + line for line in block_log)
+        
+        ciphertext_blocks.append(cipher_block)
+        previous_block = cipher_block
+    
+    final_ciphertext = iv_hex + "".join(ciphertext_blocks)
+    log.append(f"\nFinal ciphertext (IV + encrypted blocks): {final_ciphertext}")
+    return final_ciphertext, None, log
 
-    # Inverse Final Round (Round 3)
-    log.append(f"\n--- Inverse Round {NUM_ROUNDS} ---")
-    inv_round_3_start_hex = matrix_to_hex(state_matrix)
+def decrypt_cbc(ciphertext_hex, key_hex):
+    """
+    Decrypt using CBC mode.
+    First 4 characters of ciphertext_hex are the IV.
+    Rest must be a multiple of 4 hex characters (16-bit blocks)
+    """
+    log = []
+    log.append("--- CBC Mode Decryption ---")
+    
+    if len(ciphertext_hex) < 8:  # Need at least IV (4) + one block (4)
+        return None, "Ciphertext too short. Need at least IV (4 chars) + one block (4 chars)", log
+    
+    # Extract IV and ciphertext blocks
+    iv_hex = ciphertext_hex[:4]
+    ciphertext = ciphertext_hex[4:]
+    log.append(f"IV: {iv_hex}")
+    
+    if len(ciphertext) % 4 != 0:
+        return None, "Ciphertext length (excluding IV) must be a multiple of 4 hex characters", log
+    
+    blocks = [ciphertext[i:i+4] for i in range(0, len(ciphertext), 4)]
+    log.append(f"Split into {len(blocks)} blocks: {blocks}")
+    
+    previous_block = iv_hex
+    plaintext_blocks = []
+    
+    for i, block in enumerate(blocks):
+        log.append(f"\nProcessing Block {i+1}")
+        log.append(f"Encrypted Block: {block}")
+        log.append(f"Previous Block (IV for first block): {previous_block}")
+        
+        # Decrypt the block
+        decrypted_block, err, block_log = decrypt(block, key_hex)
+        if err:
+            return None, f"Error in block {i+1}: {err}", log
+            
+        log.append("Block decryption log:")
+        log.extend("  " + line for line in block_log)
+        
+        # XOR with previous ciphertext (or IV for first block)
+        plain_block = "{:04X}".format(int(decrypted_block, 16) ^ int(previous_block, 16))
+        log.append(f"After XOR with previous block: {plain_block}")
+        
+        plaintext_blocks.append(plain_block)
+        previous_block = block
+    
+    final_plaintext = "".join(plaintext_blocks)
+    log.append(f"\nFinal plaintext: {final_plaintext}")
+    return final_plaintext, None, log
 
-    # Inverse ARK with RK3
-    log.append(f"  Input to InvAddRoundKey: {inv_round_3_start_hex}")
-    final_round_key = round_keys[NUM_ROUNDS]
-    log.append(f"  Round Key RK{NUM_ROUNDS}: {matrix_to_hex(final_round_key)}")
-    state_matrix = add_round_key(state_matrix, final_round_key) # XOR is its own inverse
-    log.append(f"  Output of InvAddRoundKey(RK{NUM_ROUNDS}): {matrix_to_hex(state_matrix)}")
-
-    # Inverse SR
-    log.append(f"  Input to InvShiftRows: {matrix_to_hex(state_matrix)}")
-    state_matrix = shift_rows(state_matrix) # Inverse ShiftRows sama dengan ShiftRows
-    log.append(f"  Output of InvShiftRows: {matrix_to_hex(state_matrix)}")
-
-    # Inverse SB
-    log.append(f"  Input to InvSubNibbles: {matrix_to_hex(state_matrix)}")
-    state_matrix = sub_nibbles(state_matrix, INV_S_BOX)
-    log.append(f"  Output of InvSubNibbles (End of Inv Round {NUM_ROUNDS}): {matrix_to_hex(state_matrix)}")
-
-    # Inverse Rounds NUM_ROUNDS - 1 down to 1 (Round 2 and 1)
-    for r in range(NUM_ROUNDS - 1, 0, -1):
-        log.append(f"\n--- Inverse Round {r} ---")
-        inv_round_r_start_hex = matrix_to_hex(state_matrix)
-
-        # Inverse ARK
-        log.append(f"  Input to InvAddRoundKey: {inv_round_r_start_hex}")
-        current_round_key = round_keys[r]
-        log.append(f"  Round Key RK{r}: {matrix_to_hex(current_round_key)}")
-        state_matrix = add_round_key(state_matrix, current_round_key)
-        log.append(f"  Output of InvAddRoundKey(RK{r}): {matrix_to_hex(state_matrix)}")
-
-        # Inverse MC
-        log.append(f"  Input to InvMixColumns: {matrix_to_hex(state_matrix)}")
-        state_matrix = mix_columns(state_matrix, INV_MIX_COL_MATRIX)
-        log.append(f"  Output of InvMixColumns: {matrix_to_hex(state_matrix)}")
-
-        # Inverse SR
-        log.append(f"  Input to InvShiftRows: {matrix_to_hex(state_matrix)}")
-        state_matrix = shift_rows(state_matrix) # Inverse sama
-        log.append(f"  Output of InvShiftRows: {matrix_to_hex(state_matrix)}")
-
-        # Inverse SB
-        log.append(f"  Input to InvSubNibbles: {matrix_to_hex(state_matrix)}")
-        state_matrix = sub_nibbles(state_matrix, INV_S_BOX)
-        log.append(f"  Output of InvSubNibbles (End of Inv Round {r}): {matrix_to_hex(state_matrix)}")
-
-    # Inverse Initial ARK with RK0
-    log.append(f"\n--- Inverse Round 0 ---")
-    log.append(f"  Input to InvAddRoundKey: {matrix_to_hex(state_matrix)}")
-    rk0 = round_keys[0]
-    log.append(f"  Round Key RK0: {matrix_to_hex(rk0)}")
-    state_matrix = add_round_key(state_matrix, rk0)
-    log.append(f"  Output of InvAddRoundKey(RK0) (Final State): {matrix_to_hex(state_matrix)}")
-
-    plaintext_hex = matrix_to_hex(state_matrix)
-    log.append("-" * 20)
-    log.append(f"Final Decrypted Plaintext (Hex): {plaintext_hex}")
-    log.append("--- End Decryption ---")
-
-    return plaintext_hex, None, log
-
-# Test cases for Mini-AES
+# Update test cases
 if __name__ == "__main__":
     print("--- Mini-AES Test Cases ---")
 
@@ -442,3 +554,31 @@ if __name__ == "__main__":
             for line in log3_dec: print(line)
             assert decrypted3 == plaintext3
             print("\nAssertion Passed: Decrypted text matches original plaintext.")
+
+    # Additional Multi-Block ECB Test
+    print("\n=== Multi-Block ECB Mode Test ===")
+    key = "A73B"
+    plaintext = "6F6B2D3B"  # Two blocks
+    
+    print(f"Multi-Block ECB Encryption Test:")
+    print(f"Plaintext: {plaintext}")
+    print(f"Key: {key}")
+    
+    ciphertext, err_enc, log_enc = encrypt(plaintext, key)
+    if err_enc:
+        print(f"ECB Encryption Error: {err_enc}")
+    else:
+        print(f"ECB Ciphertext: {ciphertext}")
+        print("\n--- ECB Encryption Log ---")
+        for line in log_enc: print(line)
+        
+        print(f"\nMulti-Block ECB Decryption Test:")
+        decrypted, err_dec, log_dec = decrypt(ciphertext, key)
+        if err_dec:
+            print(f"ECB Decryption Error: {err_dec}")
+        else:
+            print(f"ECB Decrypted: {decrypted}")
+            print("\n--- ECB Decryption Log ---")
+            for line in log_dec: print(line)
+            assert decrypted == plaintext
+            print("\nECB Multi-Block Assertion Passed: Decrypted text matches original plaintext.")

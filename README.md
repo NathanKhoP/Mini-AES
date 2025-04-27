@@ -104,8 +104,53 @@ Implementasi Mini-AES ini mengikuti struktur dasar AES namun disederhanakan untu
 ![CBC](img/cbc.png)
 
 ### Implementasi Program
-(WIP, nanti dijelaskan bagian UI dan fitur pendukung yg tidak berhubungan dengan algoritma)
 
+Mini-AES 16-bit ini diimplementasikan melalui sebuah GUI web-based yang menggunakan Streamlit. Fitur-fitur yang tersedia meliputi:
+
+*   **Input dan Output:**
+    *   **Input Pengguna:** Plaintext/Ciphertext dan Key dimasukkan oleh pengguna melalui text input pada interface Streamlit. Input diharapkan dalam format string heksadesimal. Panjang Key divalidasi harus 4 karakter hex (16-bit). Untuk mode CBC, input IV (juga 4 hex char) disediakan.
+    *   **Proses Internal:** String heksadesimal input dikonversi menjadi daftar *nibble* (integer 0-15) sebelum diproses oleh algoritma inti.
+    *   **Output Hasil:** Hasil akhir (Ciphertext untuk enkripsi, Plaintext untuk dekripsi) ditampilkan kembali sebagai string hex dalam codeblock.
+    *   **Output Proses Round:** Setiap fungsi utama (`key_expansion`, `encrypt`, `decrypt`, `encrypt_cbc`, `decrypt_cbc` di `mini_aes.py`) menghasilkan *log* berupa list string yang merinci setiap langkah transformasi (misalnya, hasil `SubNibbles`, `ShiftRows`, `MixColumns`, `AddRoundKey` per round, serta langkah Key Expansion seperti `RotWord`, `SubWord`, XOR dengan `RCON`). Log ini ditampilkan di GUI dalam bagian "Show detailed process log", yang memungkinkan pengguna untuk memeriksa jalannya algoritma secara detail.
+
+*   **Test Case:**
+    *   Beberapa contoh test case (termasuk standar 6F6B/A73B, input nol, input FFFF, dan contoh multi-blok CBC) didefinisikan dalam list `TEST_CASES` di `app.py`.
+    *   Pengguna dapat memilih test case dari selection box yang ditampilkan dan memasukkannya ke field input menggunakan tombol "Apply Selected Test Case".
+    *   Meskipun *expected output* tidak ditampilkan langsung di UI, kebenaran implementasi bisa diverifikasi dengan menjalankan enkripsi lalu dekripsi pada test case yang sama dan memastikan plaintext asli diperoleh kembali.
+
+*   **Antarmuka Pengguna (GUI):**
+    *   Antarmuka dibangun menggunakan **Streamlit**, menyediakan pengalaman interaktif berbasis web.
+    *   Komponen utama GUI meliputi:
+        *   Pilihan mode operasi (Radio button untuk "Encrypt"/"Decrypt").
+        *   Pilihan mode cipher (Radio button untuk "ECB"/"CBC").
+        *   Field input teks untuk Plaintext/Ciphertext, Key, dan IV (hanya muncul saat CBC dipilih).
+        *   Tombol "Process" untuk memulai operasi.
+        *   Area output untuk menampilkan hasil dan log proses terperinci (dalam *expander*).
+        *   Dropdown dan tombol untuk memilih dan menerapkan test case.
+        *   Tabulasi untuk memisahkan fungsionalitas utama dengan fitur Ekspor/Impor.
+
+*   **Mode Operasi Blok:**
+    *   **ECB (Electronic Codebook):**
+        *   Dipilih via radio button "ECB".
+        *   Input (Plaintext/Ciphertext) yang lebih panjang dari 16-bit (4 hex char) secara otomatis dibagi menjadi blok-blok 16-bit. Setiap blok dienkripsi/didekripsi secara independen menggunakan fungsi inti dengan kunci yang sama. Fungsi pembungkus `encrypt`/`decrypt` menangani pembagian blok ini.
+        *   Tidak memerlukan IV.
+        
+    *   **CBC (Cipher Block Chaining):**
+        *   Dipilih via radio button "CBC".
+        *   Membutuhkan IV 16-bit. Jika input IV kosong saat enkripsi, IV digenerate secara acak dan ditampilkan.
+        *   **Enkripsi:** Blok plaintext pertama di-XOR dengan IV sebelum enkripsi inti. Blok plaintext selanjutnya di-XOR dengan blok *ciphertext* sebelumnya sebelum dienkripsi. IV asli ditambahkan di awal output ciphertext akhir.
+        *   **Dekripsi:** IV diekstrak dari 4 karakter hex pertama input ciphertext. Blok ciphertext pertama didekripsi, lalu hasilnya di-XOR dengan IV. Blok ciphertext selanjutnya didekripsi, lalu hasilnya di-XOR dengan blok *ciphertext* sebelumnya.
+
+*   **Export dan Import File:**
+    *   **Export:**
+        *   Diakses melalui tab "Export".
+        *   Setelah operasi selesai, pengguna dapat menyimpan detail (Mode Operasi, Mode Cipher, Input, Key, IV (jika CBC), Output, dan Log Proses Lengkap) ke dalam file CSV.
+        *   File disimpan di direktori `logs/` dengan nama file berdasarkan timestamp atau input pengguna. Sebuah tombol download juga disediakan pada GUI.
+    *   **Import:**
+        *   Diakses melalui tab "Import".
+        *   Pengguna dapat mengunggah file CSV yang sebelumnya diekspor.
+        *   Data yang diimpor (Input, Key, IV, dll.) ditampilkan, dan tombol "Apply imported values" memungkinkan pengguna mengisi field input utama aplikasi dengan nilai-nilai tersebut untuk dianalisis atau diproses ulang.
+           
 ### Penjelasan Testcase
 (WIP)
 

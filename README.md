@@ -95,13 +95,13 @@ Implementasi Mini-AES ini mengikuti struktur dasar AES namun disederhanakan untu
 
 #### Alur Mini-AES
 
-* Algoritma ECB (Inti)
+##### Algoritma ECB (Inti)
 
 ![ECB Main](img/ecb.png)
 
-* Algoritma CBC
+##### Algoritma CBC
 
-![CBC placeholder]()
+![CBC](img/cbc.png)
 
 ### Implementasi Program
 (WIP, nanti dijelaskan bagian UI dan fitur pendukung yg tidak berhubungan dengan algoritma)

@@ -302,7 +302,7 @@ Mini-AES 16-bit ini diimplementasikan melalui sebuah GUI web-based yang mengguna
 2.   **Ukuran Blok Terlalu Kecil:** Ukuran blok **16-bit** tidak memadai untuk keamanan praktis.
       *   Dalam mode **ECB**, blok plaintext identik akan menghasilkan blok ciphertext identik, membocorkan pola data. Probabilitas pengulangan blok jauh lebih tinggi dibandingkan blok 128-bit.
       *    Meskipun mode **CBC** mengatasi masalah pola ECB, ukuran blok yang kecil secara inheren kurang aman.
-3.   **Jumlah Ronde Terbatas:** Hanya **3 ronde** transformasi internal (tidak termasuk `AddRoundKey` awal). Jumlah ronde yang sedikit membatasi tingkat *diffusion* dan *confusion* yang dapat dicapai, mungkin tidak cukup untuk mengacak hubungan antara plaintext, ciphertext, dan kunci secara menyeluruh.
+3.   **Jumlah Ronde Terbatas:** Hanya **3 ronde** transformasi internal (tidak termasuk `AddRoundKey` awal). Jumlah ronde yang sedikit membatasi tingkat *diffusion* dan *confusion* yang dapat dicapai, tidak cukup untuk mengacak hubungan antara plaintext, ciphertext, dan kunci secara menyeluruh.
 4.   **Tidak Praktis untuk Aplikasi Nyata:** Karena kelemahannya yang signifikan, Mini-AES **tidak boleh digunakan** untuk mengamankan data sensitif di dunia nyata. Kegunaannya terbatas pada tujuan edukasi dan demonstrasi.
 5.   **Kompleksitas Operasi Terbatas:** Operasi seperti `MixColumns` di `GF(2^4)` dan `ShiftRows` pada matriks 2x2 secara inheren memberikan tingkat difusi yang lebih rendah per ronde dibandingkan operasi serupa di AES asli (`GF(2^8)`, matriks 4x4).
 

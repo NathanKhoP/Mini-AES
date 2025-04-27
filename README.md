@@ -285,8 +285,33 @@ Mini-AES 16-bit ini diimplementasikan melalui sebuah GUI web-based yang mengguna
 
 ### Analisis
 #### Kelebihan Mini-AES
-(WIP)
+
+1.   **Nilai Edukasi Tinggi:** Merupakan keunggulan utama. Ukuran blok (`16-bit`), kunci (`16-bit`), dan *state matrix* (`2x2`) yang kecil membuatnya ideal untuk pembelajaran. Proses enkripsi/dekripsi, termasuk operasi seperti `SubNibbles`, `ShiftRows`, `MixColumns`, dan `Key Expansion`, dapat diikuti dan bahkan dihitung secara manual, jauh lebih mudah dibandingkan AES standar (`128-bit`). Log detail yang dihasilkan oleh program ini juga membantu visualisasi setiap langkah.
+2.   **Implementasi Sederhana:** Kode relatif ringkas. Logika operasi, terutama perkalian di `GF(2^4)` (`gf_multiply`), lebih mudah dipahami dan diimplementasikan daripada `GF(2^8)` pada AES asli. Ini memfasilitasi pemahaman bagi pemrogram pemula.
+3.   **Demonstrasi Prinsip Kriptografi Modern:** Meskipun sederhana, implementasi ini efektif menunjukkan konsep inti cipher blok modern:
+      *   **Confusion:** Dicapai melalui substitusi non-linear `SubNibbles` menggunakan `S_BOX`.
+      *   **Diffusion:** Dicapai melalui permutasi `ShiftRows` dan pencampuran linier `MixColumns` untuk menyebarkan pengaruh bit.
+      *   **Key Addition:** Penggabungan kunci ronde via `AddRoundKey` (operasi XOR).
+      *   **Key Schedule:** Proses derivasi kunci ronde (`RK0` - `RK3`) dari kunci utama melalui `key_expansion`.
+      *   **Struktur Ronde:** Pengulangan transformasi (`SubNibbles`, `ShiftRows`, `MixColumns`, `AddRoundKey`) dalam beberapa ronde (`NUM_ROUNDS = 3`).
+4.   **Kebutuhan Sumber Daya Rendah:** Operasi yang sederhana dan ukuran data yang kecil membuatnya sangat ringan dalam hal penggunaan memori dan CPU.
+
 #### Keterbatasan Mini-AES
-(WIP)
+
+1.   **Keamanan Sangat Rendah:** Ini adalah kelemahan fundamental. Ukuran kunci hanya **16 bit**, menghasilkan ruang kunci yang sangat kecil (`2^16 = 65.536` kemungkinan). Jumlah ini dapat di-*brute-force* dengan sangat cepat menggunakan komputasi modern.
+2.   **Ukuran Blok Terlalu Kecil:** Ukuran blok **16-bit** tidak memadai untuk keamanan praktis.
+      *   Dalam mode **ECB**, blok plaintext identik akan menghasilkan blok ciphertext identik, membocorkan pola data. Probabilitas pengulangan blok jauh lebih tinggi dibandingkan blok 128-bit.
+      *    Meskipun mode **CBC** mengatasi masalah pola ECB, ukuran blok yang kecil secara inheren kurang aman.
+3.   **Jumlah Ronde Terbatas:** Hanya **3 ronde** transformasi internal (tidak termasuk `AddRoundKey` awal). Jumlah ronde yang sedikit membatasi tingkat *diffusion* dan *confusion* yang dapat dicapai, tidak cukup untuk mengacak hubungan antara plaintext, ciphertext, dan kunci secara menyeluruh.
+4.   **Tidak Praktis untuk Aplikasi Nyata:** Karena kelemahannya yang signifikan, Mini-AES **tidak boleh digunakan** untuk mengamankan data sensitif di dunia nyata. Kegunaannya terbatas pada tujuan edukasi dan demonstrasi.
+5.   **Kompleksitas Operasi Terbatas:** Operasi seperti `MixColumns` di `GF(2^4)` dan `ShiftRows` pada matriks 2x2 secara inheren memberikan tingkat difusi yang lebih rendah per ronde dibandingkan operasi serupa di AES asli (`GF(2^8)`, matriks 4x4).
+
 #### Keamanan dan Avalanche Effect
-(WIP)
+
+1.   **Keamanan:** Seperti telah dijelaskan, Mini-AES **tidak aman** untuk penggunaan praktis. Kerentanan utamanya adalah serangan **brute-force** pada ruang kunci **16-bit** yang trivial. Analisis kriptografi lain (seperti diferensial atau linear) juga kemungkinan besar jauh lebih mudah diterapkan pada Mini-AES dibandingkan AES standar karena kompleksitasnya yang rendah.
+
+2.   **Avalanche Effect:**
+      *   **Konsep:** Avalanche Effect adalah properti di mana perubahan kecil pada input (misalnya, satu bit pada plaintext atau kunci) menyebabkan perubahan besar dan acak pada output (idealnya sekitar 50% bit ciphertext berubah). Ini adalah indikator *diffusion* dan *confusion* yang baik.
+      *   **Implementasi pada Mini-AES:** Algoritma kami dibuat secara khusus agar dapat menunjukkan Avalanche Effect. Kombinasi `SubNibbles` (non-linear), `ShiftRows` (permutasi), dan `MixColumns` (pencampuran) yang diulang dalam 3 ronde bertujuan menyebarkan perubahan input ke seluruh *state*. Log detail program dapat digunakan untuk mengamati penyebaran ini pada tiap ronde.
+      *   **Efektivitas:** Meskipun Avalanche Effect dapat diamati, kekuatannya **terbatas** oleh **ukuran state yang kecil (16-bit)** dan **jumlah ronde yang sedikit (3)**.
+      *   **Kesimpulan:** Mini-AES menunjukkan prinsip Avalanche Effect secara konseptual, namun efek tersebut tidak cukup kuat untuk memberikan jaminan keamanan praktis karena keterbatasan fundamental algoritma (ukuran kunci, ukuran blok, jumlah ronde).

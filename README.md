@@ -90,9 +90,18 @@ Implementasi Mini-AES ini mengikuti struktur dasar AES namun disederhanakan untu
 
 ### Flowchart
 #### Alur Key Expansion
-(WIP)
+
+![Key Expansion](img/keyexp.png)
+
 #### Alur Mini-AES
-(WIP)
+
+* Algoritma ECB (Inti)
+
+![ECB Main](img/ecb.png)
+
+* Algoritma CBC
+
+![CBC placeholder]()
 
 ### Implementasi Program
 (WIP, nanti dijelaskan bagian UI dan fitur pendukung yg tidak berhubungan dengan algoritma)
@@ -104,4 +113,6 @@ Implementasi Mini-AES ini mengikuti struktur dasar AES namun disederhanakan untu
 #### Kelebihan Mini-AES
 (WIP)
 #### Keterbatasan Mini-AES
+(WIP)
+#### Keamanan dan Avalanche Effect
 (WIP)
